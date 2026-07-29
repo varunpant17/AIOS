@@ -20,7 +20,6 @@ async def test_database_connection():
 
     print("Database connected successfully!")
 
-    Base.metadata.create_all(bind=engine)
 
     print("Database tables created successfully!")
 
