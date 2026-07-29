@@ -6,9 +6,16 @@ class UserCreate(BaseModel):
     city: str
 
 
+class UserUpdate(BaseModel):
+    name: str
+    city: str
+
+
 class UserResponse(BaseModel):
     id: int
     name: str
     city: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True
+    )
