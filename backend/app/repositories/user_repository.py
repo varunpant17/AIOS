@@ -5,10 +5,17 @@ from app.models.user import User
 
 class UserRepository:
 
-    def create_user(self, db: Session, name: str, city: str):
+    def create_user(
+        self,
+        db: Session,
+        email: str,
+        hashed_password: str,
+        full_name: str,
+    ):
         user = User(
-            name=name,
-            city=city,
+            email=email,
+            hashed_password=hashed_password,
+            full_name=full_name,
         )
 
         db.add(user)
@@ -21,29 +28,48 @@ class UserRepository:
         return db.query(User).all()
 
     def get_user(self, db: Session, user_id: int):
-        return db.query(User).filter(User.id == user_id).first()
+        return (
+            db.query(User)
+            .filter(User.id == user_id)
+            .first()
+        )
+
+    def get_user_by_email(
+        self,
+        db: Session,
+        email: str,
+    ):
+        return (
+            db.query(User)
+            .filter(User.email == email)
+            .first()
+        )
 
     def update_user(
         self,
         db: Session,
         user_id: int,
-        name: str,
-        city: str,
+        full_name: str,
+        is_active: bool,
     ):
         user = self.get_user(db, user_id)
 
         if user is None:
             return None
 
-        user.name = name
-        user.city = city
+        user.full_name = full_name
+        user.is_active = is_active
 
         db.commit()
         db.refresh(user)
 
         return user
 
-    def delete_user(self, db: Session, user_id: int):
+    def delete_user(
+        self,
+        db: Session,
+        user_id: int,
+    ):
         user = self.get_user(db, user_id)
 
         if user is None:
