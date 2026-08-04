@@ -1,9 +1,9 @@
 from .base_agent import BaseAgent
-from .chat_agent import ChatAgent
+from .llm_agent import LLMAgent
 from .types import AgentContext
 
 __all__ = [
     "BaseAgent",
-    "ChatAgent",
+    "LLMAgent",
     "AgentContext",
 ]
