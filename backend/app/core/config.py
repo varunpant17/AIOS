@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str
     DEFAULT_LLM_MODEL: str
+    DEFAULT_LLM_PROVIDER: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -15,6 +15,8 @@ class LLMManager:
         )
 
     def generate(self, request: LLMRequest) -> LLMResponse:
-        provider = self._registry.get("google")
+        provider = self._registry.get(
+            settings.DEFAULT_LLM_PROVIDER
+        )
 
         return provider.generate(request)
