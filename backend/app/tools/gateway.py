@@ -2,9 +2,13 @@ import json
 from time import perf_counter
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
-from app.tools.exceptions import ToolNotFoundError
+from app.tools.exceptions import (
+    ToolInputValidationError,
+    ToolInvocationError,
+    ToolNotFoundError,
+)
 from app.tools.policy import ToolPolicy
 from app.tools.registry import ToolRegistry
 from app.tools.types import ToolErrorCode, ToolExecutionContext, ToolResult
@@ -33,13 +37,6 @@ class ToolGateway:
         context: ToolExecutionContext,
     ) -> ToolResult:
         started = perf_counter()
-        if not context.reserve_invocation(self._max_invocations):
-            return ToolResult.failed(
-                ToolErrorCode.INVOCATION_LIMIT,
-                "Tool invocation budget exhausted for this execution.",
-                metadata={"duration_ms": self._duration_ms(started)},
-            )
-
         try:
             tool = self._registry.get(name)
         except ToolNotFoundError:
@@ -50,12 +47,16 @@ class ToolGateway:
             )
 
         try:
-            validated_arguments = tool.input_model.model_validate(arguments)
-        except ValidationError as exc:
+            validated_arguments = tool.validate_arguments(arguments)
+        except ToolInputValidationError as exc:
             return ToolResult.failed(
                 ToolErrorCode.INVALID_INPUT,
                 "Input does not match the tool's declared schema.",
-                cause_type=type(exc).__name__,
+                cause_type=(
+                    type(exc.__cause__).__name__
+                    if exc.__cause__
+                    else type(exc).__name__
+                ),
                 metadata={"duration_ms": self._duration_ms(started)},
             )
 
@@ -75,9 +76,23 @@ class ToolGateway:
                 metadata={"duration_ms": self._duration_ms(started)},
             )
 
+        if not context.reserve_invocation(self._max_invocations):
+            return ToolResult.failed(
+                ToolErrorCode.INVOCATION_LIMIT,
+                "Tool invocation budget exhausted for this execution.",
+                metadata={"duration_ms": self._duration_ms(started)},
+            )
+
         try:
             output = tool.execute(validated_arguments, context)
             safe_output = self._json_safe(output)
+        except ToolInvocationError as exc:
+            return ToolResult.failed(
+                exc.code,
+                str(exc),
+                cause_type=exc.cause_type,
+                metadata={"duration_ms": self._duration_ms(started)},
+            )
         except Exception as exc:
             return ToolResult.failed(
                 ToolErrorCode.EXECUTION_FAILED,

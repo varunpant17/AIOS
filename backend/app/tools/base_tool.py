@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
+from app.tools.exceptions import ToolInputValidationError
 from app.tools.types import ToolDefinition, ToolExecutionContext
 
 
@@ -40,6 +41,14 @@ class BaseTool(ABC):
             input_schema=self.input_model.model_json_schema(),
             output_schema=output_schema,
         )
+
+    def validate_arguments(self, arguments: dict[str, Any]) -> BaseModel:
+        try:
+            return self.input_model.model_validate(arguments)
+        except ValidationError as exc:
+            raise ToolInputValidationError(
+                "Tool input failed schema validation."
+            ) from exc
 
     @abstractmethod
     def execute(

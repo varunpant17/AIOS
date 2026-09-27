@@ -13,6 +13,10 @@ class ToolErrorCode(StrEnum):
     EXECUTION_FAILED = "execution_failed"
     INVOCATION_LIMIT = "invocation_limit"
     UNSUPPORTED_OPERATION = "unsupported_operation"
+    MCP_CONNECTION_FAILED = "mcp_connection_failed"
+    MCP_DISCOVERY_FAILED = "mcp_discovery_failed"
+    MCP_INVOCATION_FAILED = "mcp_invocation_failed"
+    INVALID_MCP_RESPONSE = "invalid_mcp_response"
 
 
 class ToolDefinition(BaseModel):
