@@ -18,13 +18,20 @@ from app.agents.types import (
 )
 from app.llm.exceptions import LLMError
 from app.llm.types import Message, MessageRole
+from app.tools.gateway import ToolGateway
 
 
 class AgentRuntime:
     """Owns synchronous execution lifecycle and in-process state tracking."""
 
-    def __init__(self) -> None:
+    def __init__(self, tool_gateway: ToolGateway | None = None) -> None:
         self._states: dict[str, AgentState] = {}
+        self._tool_gateway = tool_gateway
+
+    @property
+    def tool_gateway(self) -> ToolGateway | None:
+        """Configured tool boundary; the runtime does not start tool loops."""
+        return self._tool_gateway
 
     def execute(
         self,

@@ -1,29 +1,50 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
-from app.tools.types import ToolResult
+from pydantic import BaseModel
+
+from app.tools.types import ToolDefinition, ToolExecutionContext
 
 
 class BaseTool(ABC):
-    """
-    Base class for every AIOS tool.
-    """
+    """Explicitly registered capability with a typed input boundary."""
 
     @property
     @abstractmethod
     def name(self) -> str:
-        """
-        Unique tool name.
-        """
+        """Stable unique tool name."""
 
     @property
     @abstractmethod
     def description(self) -> str:
-        """
-        Description used by agents and LLMs.
-        """
+        """Short description suitable for runtime and model catalogs."""
+
+    @property
+    @abstractmethod
+    def input_model(self) -> type[BaseModel]:
+        """Pydantic model used to validate input before execution."""
+
+    @property
+    def output_model(self) -> type[BaseModel] | None:
+        """Optional output model whose schema can be published to callers."""
+        return None
+
+    @property
+    def definition(self) -> ToolDefinition:
+        output_schema = (
+            self.output_model.model_json_schema() if self.output_model else None
+        )
+        return ToolDefinition(
+            name=self.name,
+            description=self.description,
+            input_schema=self.input_model.model_json_schema(),
+            output_schema=output_schema,
+        )
 
     @abstractmethod
-    def execute(self, **kwargs) -> ToolResult:
-        """
-        Execute the tool.
-        """
+    def execute(
+        self,
+        arguments: BaseModel,
+        context: ToolExecutionContext,
+    ) -> Any:
+        """Execute validated arguments in the supplied execution context."""

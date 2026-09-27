@@ -4,10 +4,9 @@ An AIOS agent is a configured runtime component that can use capabilities throug
 
 ```text
 Caller -> AgentRuntime -> LLMAgent -> LLMManager -> configured provider
-             │              │
-             └── AgentState  └── normalized LLMRequest / LLMResponse
-                    │
-                    └── AgentResult
+             │
+             ├── AgentState -> AgentResult
+             └── optional ToolGateway (injected boundary; no tool loop)
 ```
 
 `AgentDefinition` holds an agent id, name, description, optional model, system instructions, and metadata. `AgentContext` carries one execution's goal, input, conversation, correlation id, metadata, and contextual data. It is transient execution context, not persistent memory.
