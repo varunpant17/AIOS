@@ -1,20 +1,21 @@
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
-from app.agents.types import AgentContext
-from app.llm.manager import LLMManager
-from app.llm.types import LLMRequest, LLMResponse
+from app.agents.types import AgentContext, AgentDefinition, AgentEventType
 
 
 class BaseAgent(ABC):
-    """Base class for all AIOS agents."""
+    """Execution contract for an AIOS agent, independent of its provider."""
 
-    def __init__(self) -> None:
-        self._llm = LLMManager()
-
-    def generate(self, request: LLMRequest) -> LLMResponse:
-        return self._llm.generate(request)
+    def __init__(self, definition: AgentDefinition) -> None:
+        self.definition = definition
 
     @abstractmethod
-    def run(self, context: AgentContext):
-        """Execute the agent."""
+    def run(
+        self,
+        context: AgentContext,
+        *,
+        event_sink: Callable[[AgentEventType], None] | None = None,
+    ) -> str:
+        """Run one bounded execution and return its textual output."""
         ...
