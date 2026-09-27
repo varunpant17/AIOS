@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
-    GEMINI_API_KEY: str
-    DEFAULT_LLM_MODEL: str
-    DEFAULT_LLM_PROVIDER: str
+    GEMINI_API_KEY: str | None = None
+    DEFAULT_LLM_MODEL: str = "gemini-2.5-flash"
+    DEFAULT_LLM_PROVIDER: str = "google"
 
     model_config = SettingsConfigDict(
         env_file=".env",

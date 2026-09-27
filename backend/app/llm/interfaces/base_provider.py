@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.llm.types import LLMRequest, LLMResponse
+from app.llm.types import LLMCapability, LLMRequest, LLMResponse
 
 
 class LLMProvider(ABC):
@@ -15,4 +15,10 @@ class LLMProvider(ABC):
     @abstractmethod
     def generate(self, request: LLMRequest) -> LLMResponse:
         """Generate a response from the language model."""
+        ...
+
+    @property
+    @abstractmethod
+    def capabilities(self) -> frozenset[LLMCapability]:
+        """Return the normalized capabilities implemented by this adapter."""
         ...

@@ -1,3 +1,1 @@
-from .gemini_provider import GeminiProvider
-
-__all__ = ["GeminiProvider"]
+"""Provider adapters. Import a specific adapter where it is needed."""
