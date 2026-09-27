@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from contextlib import nullcontext
 from uuid import uuid4
 
 from app.agents.base_agent import BaseAgent
@@ -18,15 +19,30 @@ from app.agents.types import (
 )
 from app.llm.exceptions import LLMError
 from app.llm.types import Message, MessageRole
+from app.observability.context import bind_run
+from app.observability.interfaces import Observability
+from app.observability.safe import (
+    safe_complete_run,
+    safe_emit,
+    safe_fail_run,
+    safe_start_run,
+)
+from app.observability.types import EventType
 from app.tools.gateway import ToolGateway
 
 
 class AgentRuntime:
     """Owns synchronous execution lifecycle and in-process state tracking."""
 
-    def __init__(self, tool_gateway: ToolGateway | None = None) -> None:
+    def __init__(
+        self,
+        tool_gateway: ToolGateway | None = None,
+        *,
+        observability: Observability | None = None,
+    ) -> None:
         self._states: dict[str, AgentState] = {}
         self._tool_gateway = tool_gateway
+        self._observability = observability
 
     @property
     def tool_gateway(self) -> ToolGateway | None:
@@ -69,12 +85,27 @@ class AgentRuntime:
         state.transition(AgentExecutionStatus.RUNNING)
         state.iteration = 1
         self._emit(state, AgentEventType.EXECUTION_STARTED)
+        run = safe_start_run(
+            self._observability,
+            {"execution_id": execution_id, "agent_id": state.agent_id},
+        )
+        run_id = run.run_id if run is not None else None
+        if run_id is not None:
+            state.metadata["run_id"] = run_id
+        safe_emit(
+            self._observability,
+            EventType.AGENT_STARTED,
+            "agent",
+            run_id=run_id,
+            metadata={"execution_id": execution_id, "agent_id": state.agent_id},
+        )
 
         try:
-            output = agent.run(
-                context,
-                event_sink=lambda event_type: self._emit(state, event_type),
-            )
+            with bind_run(run_id) if run_id is not None else nullcontext():
+                output = agent.run(
+                    context,
+                    event_sink=lambda event_type: self._emit(state, event_type),
+                )
             if not isinstance(output, str):
                 raise AgentExecutionError("Agent output must be text.")
         except LLMError as exc:
@@ -84,6 +115,7 @@ class AgentRuntime:
                 AgentLLMError("Agent LLM request failed."),
                 error_code="llm_error",
                 cause=exc,
+                run_id=run_id,
             )
         except Exception as exc:
             return self._fail(
@@ -92,11 +124,22 @@ class AgentRuntime:
                 AgentExecutionError("Agent execution failed."),
                 error_code="execution_failed",
                 cause=exc,
+                run_id=run_id,
             )
 
         state.result = output
         state.transition(AgentExecutionStatus.COMPLETED)
         self._emit(state, AgentEventType.EXECUTION_COMPLETED)
+        safe_emit(
+            self._observability,
+            EventType.AGENT_COMPLETED,
+            "agent",
+            run_id=run_id,
+            duration_ms=(state.updated_at - started_at).total_seconds() * 1000,
+            metadata={"execution_id": execution_id, "agent_id": state.agent_id},
+        )
+        if run_id is not None:
+            safe_complete_run(self._observability, run_id)
         return AgentResult(
             execution_id=state.execution_id,
             agent_id=state.agent_id,
@@ -121,6 +164,7 @@ class AgentRuntime:
         *,
         error_code: str,
         cause: Exception | None = None,
+        run_id: str | None = None,
     ) -> AgentResult:
         state.transition(AgentExecutionStatus.FAILED)
         state.error = AgentErrorInfo(
@@ -130,6 +174,17 @@ class AgentRuntime:
             cause_type=type(cause).__name__ if cause is not None else None,
         )
         self._emit(state, AgentEventType.EXECUTION_FAILED)
+        safe_emit(
+            self._observability,
+            EventType.AGENT_FAILED,
+            "agent",
+            run_id=run_id,
+            duration_ms=(state.updated_at - started_at).total_seconds() * 1000,
+            metadata={"execution_id": state.execution_id, "agent_id": state.agent_id},
+            error=error,
+        )
+        if run_id is not None:
+            safe_fail_run(self._observability, run_id, error)
         if cause is not None:
             error.__cause__ = cause
         return AgentResult(

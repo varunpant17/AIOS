@@ -5,6 +5,7 @@ from app.mcp.adapter import MCPToolAdapter
 from app.tools.exceptions import DuplicateToolError
 from app.tools.registry import ToolRegistry
 from app.tools.types import ToolDefinition
+from app.observability.interfaces import Observability
 
 
 class MCPToolBridge:
@@ -15,10 +16,13 @@ class MCPToolBridge:
         server_name: str,
         client: MCPClientPort,
         registry: ToolRegistry,
+        *,
+        observability: Observability | None = None,
     ) -> None:
         self._server_name = server_name
         self._client = client
         self._registry = registry
+        self._observability = observability
 
     @property
     def state(self) -> MCPConnectionState:
@@ -33,7 +37,9 @@ class MCPToolBridge:
         try:
             discovered = self._client.list_tools()
             adapters = [
-                MCPToolAdapter(self._server_name, tool, self._client)
+                MCPToolAdapter(
+                    self._server_name, tool, self._client, self._observability
+                )
                 for tool in discovered
             ]
             self._registry.register_many(adapters)

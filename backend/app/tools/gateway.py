@@ -12,6 +12,9 @@ from app.tools.exceptions import (
 from app.tools.policy import ToolPolicy
 from app.tools.registry import ToolRegistry
 from app.tools.types import ToolErrorCode, ToolExecutionContext, ToolResult
+from app.observability.interfaces import Observability
+from app.observability.safe import operation_run, safe_emit
+from app.observability.types import EventError, EventType
 
 
 class ToolGateway:
@@ -23,14 +26,84 @@ class ToolGateway:
         policy: ToolPolicy,
         *,
         max_invocations_per_execution: int = 10,
+        observability: Observability | None = None,
     ) -> None:
         if max_invocations_per_execution < 1:
             raise ValueError("max_invocations_per_execution must be positive")
         self._registry = registry
         self._policy = policy
         self._max_invocations = max_invocations_per_execution
+        self._observability = observability
 
     def invoke(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        context: ToolExecutionContext,
+    ) -> ToolResult:
+        with operation_run(self._observability, "tool") as operation:
+            run_id = operation.run_id
+            started = perf_counter()
+            metadata = {
+                "tool_name": name,
+                "agent_id": context.agent_id,
+                "execution_id": context.execution_id,
+            }
+            safe_emit(
+                self._observability,
+                EventType.TOOL_REQUEST,
+                "tool",
+                run_id=run_id,
+                metadata=metadata,
+            )
+            try:
+                result = self._invoke(name, arguments, context)
+            except Exception as exc:
+                safe_emit(
+                    self._observability,
+                    EventType.TOOL_FAILED,
+                    "tool",
+                    run_id=run_id,
+                    metadata={**metadata, "error_code": type(exc).__name__},
+                    duration_ms=(perf_counter() - started) * 1000,
+                    error=EventError(
+                        code=type(exc).__name__, exception_type=type(exc).__name__
+                    ),
+                )
+                raise
+            result_metadata = {**metadata}
+            if result.error is not None:
+                result_metadata["error_code"] = result.error.code.value
+                safe_emit(
+                    self._observability,
+                    EventType.TOOL_FAILED,
+                    "tool",
+                    run_id=run_id,
+                    metadata=result_metadata,
+                    duration_ms=(perf_counter() - started) * 1000,
+                    error=EventError(
+                        code=result.error.code.value,
+                        exception_type=result.error.cause_type or "ToolError",
+                    ),
+                )
+                operation.fail(
+                    EventError(
+                        code=result.error.code.value,
+                        exception_type=result.error.cause_type or "ToolError",
+                    )
+                )
+            else:
+                safe_emit(
+                    self._observability,
+                    EventType.TOOL_COMPLETED,
+                    "tool",
+                    run_id=run_id,
+                    metadata=result_metadata,
+                    duration_ms=(perf_counter() - started) * 1000,
+                )
+            return result
+
+    def _invoke(
         self,
         name: str,
         arguments: dict[str, Any],

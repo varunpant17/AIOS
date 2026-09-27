@@ -1,4 +1,5 @@
 import re
+from time import perf_counter
 from typing import Any
 
 from jsonschema import ValidationError as JSONSchemaValidationError
@@ -18,6 +19,9 @@ from app.mcp.types import MCPCallResult, MCPToolSpec
 from app.tools.base_tool import BaseTool
 from app.tools.exceptions import ToolInputValidationError, ToolInvocationError
 from app.tools.types import ToolDefinition, ToolErrorCode, ToolExecutionContext
+from app.observability.interfaces import Observability
+from app.observability.safe import operation_run, safe_emit
+from app.observability.types import EventError, EventType
 
 
 class MCPArguments(RootModel[dict[str, Any]]):
@@ -32,10 +36,12 @@ class MCPToolAdapter(BaseTool):
         server_name: str,
         tool: MCPToolSpec,
         client: MCPClientPort,
+        observability: Observability | None = None,
     ) -> None:
         self._server_name = server_name
         self._remote_tool = tool
         self._client = client
+        self._observability = observability
         normalized_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", tool.name)
         self._aios_name = f"{server_name}__{normalized_name}"
         if tool.input_schema.get("type") != "object":
@@ -93,6 +99,55 @@ class MCPToolAdapter(BaseTool):
             ) from exc
 
     def execute(
+        self,
+        arguments: BaseModel,
+        context: ToolExecutionContext,
+    ) -> Any:
+        with operation_run(self._observability, "mcp") as operation:
+            run_id = operation.run_id
+            started = perf_counter()
+            metadata = {
+                "server_name": self._server_name,
+                "tool_name": self._remote_tool.name,
+                "agent_id": context.agent_id,
+                "execution_id": context.execution_id,
+            }
+            safe_emit(
+                self._observability,
+                EventType.MCP_REQUEST,
+                "mcp",
+                run_id=run_id,
+                metadata=metadata,
+            )
+            try:
+                output = self._execute_remote(arguments, context)
+            except Exception as exc:
+                code = getattr(exc, "code", type(exc).__name__)
+                safe_emit(
+                    self._observability,
+                    EventType.MCP_FAILED,
+                    "mcp",
+                    run_id=run_id,
+                    metadata={**metadata, "error_code": str(code)},
+                    duration_ms=(perf_counter() - started) * 1000,
+                    error=EventError(
+                        code=str(code),
+                        exception_type=getattr(exc, "cause_type", None)
+                        or type(exc).__name__,
+                    ),
+                )
+                raise
+            safe_emit(
+                self._observability,
+                EventType.MCP_COMPLETED,
+                "mcp",
+                run_id=run_id,
+                metadata=metadata,
+                duration_ms=(perf_counter() - started) * 1000,
+            )
+            return output
+
+    def _execute_remote(
         self,
         arguments: BaseModel,
         context: ToolExecutionContext,
