@@ -27,6 +27,12 @@ class EventType(StrEnum):
     MCP_REQUEST = "mcp.request"
     MCP_COMPLETED = "mcp.completed"
     MCP_FAILED = "mcp.failed"
+    RAG_INGESTION_STARTED = "rag.ingestion.started"
+    RAG_INGESTION_COMPLETED = "rag.ingestion.completed"
+    RAG_INGESTION_FAILED = "rag.ingestion.failed"
+    RAG_RETRIEVAL_STARTED = "rag.retrieval.started"
+    RAG_RETRIEVAL_COMPLETED = "rag.retrieval.completed"
+    RAG_RETRIEVAL_FAILED = "rag.retrieval.failed"
 
 
 class EventError(BaseModel):
