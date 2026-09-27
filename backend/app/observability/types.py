@@ -33,6 +33,18 @@ class EventType(StrEnum):
     RAG_RETRIEVAL_STARTED = "rag.retrieval.started"
     RAG_RETRIEVAL_COMPLETED = "rag.retrieval.completed"
     RAG_RETRIEVAL_FAILED = "rag.retrieval.failed"
+    MEMORY_STORE_STARTED = "memory.store.started"
+    MEMORY_STORE_COMPLETED = "memory.store.completed"
+    MEMORY_STORE_FAILED = "memory.store.failed"
+    MEMORY_SEARCH_STARTED = "memory.search.started"
+    MEMORY_SEARCH_COMPLETED = "memory.search.completed"
+    MEMORY_SEARCH_FAILED = "memory.search.failed"
+    MEMORY_DELETE_STARTED = "memory.delete.started"
+    MEMORY_DELETE_COMPLETED = "memory.delete.completed"
+    MEMORY_DELETE_FAILED = "memory.delete.failed"
+    MEMORY_GET_STARTED = "memory.get.started"
+    MEMORY_GET_COMPLETED = "memory.get.completed"
+    MEMORY_GET_FAILED = "memory.get.failed"
 
 
 class EventError(BaseModel):
