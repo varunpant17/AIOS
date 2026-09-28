@@ -3,21 +3,39 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from app.core.immutable import ImmutableDomainModel
 from app.llm.types import Message
 
 
 class AgentDefinition(BaseModel):
     """Provider-neutral identity and execution defaults for an agent."""
 
-    agent_id: str = Field(default_factory=lambda: str(uuid4()))
-    name: str
+    agent_id: str = Field(default_factory=lambda: str(uuid4()), min_length=1)
+    name: str = Field(min_length=1)
     description: str = ""
     model: str | None = None
     system_instructions: str = ""
     metadata: dict[str, str] = Field(default_factory=dict)
+    capabilities: tuple[str, ...] = ()
 
+    @field_validator("agent_id", "name")
+    @classmethod
+    def reject_blank_identity(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("agent identity fields must contain non-whitespace text")
+        return value
+
+    @field_validator("capabilities")
+    @classmethod
+    def normalize_capabilities(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(sorted(capability.strip().casefold() for capability in value))
+        if any(not capability for capability in normalized):
+            raise ValueError("agent capabilities must contain non-whitespace text")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("agent capabilities must be unique")
+        return normalized
 
 class AgentContext(BaseModel):
     """Execution-scoped input and context; this is not persistent memory."""
@@ -38,7 +56,7 @@ class AgentExecutionStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
-class AgentErrorInfo(BaseModel):
+class AgentErrorInfo(ImmutableDomainModel):
     code: str
     message: str
     exception_type: str

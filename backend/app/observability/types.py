@@ -59,6 +59,13 @@ class EventType(StrEnum):
     WORKFLOW_STEP_COMPLETED = "workflow.step.completed"
     WORKFLOW_STEP_FAILED = "workflow.step.failed"
     WORKFLOW_STEP_CANCELLED = "workflow.step.cancelled"
+    AGENT_TASK_CREATED = "agent.task.created"
+    AGENT_TASK_STARTED = "agent.task.started"
+    AGENT_TASK_COMPLETED = "agent.task.completed"
+    AGENT_TASK_FAILED = "agent.task.failed"
+    A2A_MESSAGE_SENT = "a2a.message.sent"
+    A2A_MESSAGE_RECEIVED = "a2a.message.received"
+    A2A_MESSAGE_FAILED = "a2a.message.failed"
 
 
 class EventError(BaseModel):
