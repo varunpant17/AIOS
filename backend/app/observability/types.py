@@ -51,6 +51,14 @@ class EventType(StrEnum):
     REFLECTION_STARTED = "reflection.started"
     REFLECTION_COMPLETED = "reflection.completed"
     REFLECTION_FAILED = "reflection.failed"
+    WORKFLOW_STARTED = "workflow.started"
+    WORKFLOW_COMPLETED = "workflow.completed"
+    WORKFLOW_FAILED = "workflow.failed"
+    WORKFLOW_CANCELLED = "workflow.cancelled"
+    WORKFLOW_STEP_STARTED = "workflow.step.started"
+    WORKFLOW_STEP_COMPLETED = "workflow.step.completed"
+    WORKFLOW_STEP_FAILED = "workflow.step.failed"
+    WORKFLOW_STEP_CANCELLED = "workflow.step.cancelled"
 
 
 class EventError(BaseModel):
