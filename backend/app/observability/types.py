@@ -66,6 +66,11 @@ class EventType(StrEnum):
     A2A_MESSAGE_SENT = "a2a.message.sent"
     A2A_MESSAGE_RECEIVED = "a2a.message.received"
     A2A_MESSAGE_FAILED = "a2a.message.failed"
+    EVALUATION_RUN_STARTED = "evaluation.run.started"
+    EVALUATION_CASE_COMPLETED = "evaluation.case.completed"
+    EVALUATION_CASE_FAILED = "evaluation.case.failed"
+    EVALUATION_RUN_COMPLETED = "evaluation.run.completed"
+    EVALUATION_RUN_FAILED = "evaluation.run.failed"
 
 
 class EventError(BaseModel):
