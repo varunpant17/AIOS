@@ -45,6 +45,12 @@ class EventType(StrEnum):
     MEMORY_GET_STARTED = "memory.get.started"
     MEMORY_GET_COMPLETED = "memory.get.completed"
     MEMORY_GET_FAILED = "memory.get.failed"
+    PLANNING_STARTED = "planning.started"
+    PLANNING_COMPLETED = "planning.completed"
+    PLANNING_FAILED = "planning.failed"
+    REFLECTION_STARTED = "reflection.started"
+    REFLECTION_COMPLETED = "reflection.completed"
+    REFLECTION_FAILED = "reflection.failed"
 
 
 class EventError(BaseModel):
